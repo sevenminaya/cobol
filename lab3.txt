@@ -1,0 +1,193 @@
+//XCLNY012 JOB ,'MINAYA'                                              
+//COMGO EXEC COB2CG,PARM.COB=(QUOTE)                                  
+//COB.SYSIN DD *                                                      
+//*MAIN CLASS=EXPRESS                                                 
+       IDENTIFICATION DIVISION.                                       
+       PROGRAM-ID.   PROG12.                                          
+       ENVIRONMENT DIVISION.                                          
+       INPUT-OUTPUT SECTION.                                          
+       FILE-CONTROL.                                                  
+           SELECT IN-TEST-FILE      ASSIGN INFILE.                    
+           SELECT OUT-REPORT-FILE   ASSIGN PRINTER.                   
+       DATA DIVISION.                                                 
+       FILE SECTION.                                                  
+       FD  IN-TEST-FILE                                               
+           RECORD CONTAINS 80 CHARACTERS                              
+           RECORDING MODE IS F.                                       
+                                                                      
+                                                                      
+       01  IN-TEST-REC-WS.                                            
+           05 SS-NUM-IN              PIC X(09).                       
+           05 DAY-HOURS-IN           PIC 9(2)V9 OCCURS 6 TIMES.       
+                                                                      
+                                                                      
+       FD  OUT-REPORT-FILE                                            
+           RECORD CONTAINS 140 CHARACTERS                             
+           RECORDING MODE IS F.                                       
+                                                                      
+       01  WORKING-W.                                                 
+           05 DAY-HOURS-W PIC S9(2)V9 PACKED-DECIMAL OCCURS 6 TIMES.  
+                                                                      
+       01 OUT-REPORT-REC                     PIC X(140).              
+                                                                      
+       WORKING-STORAGE SECTION.                                       
+                                                                      
+      *01 MORE-INPUT                PIC X      VALUE "Y".             
+       01 IS-THERE-MORE-INPUT    PIC X      VALUE "Y".                
+      *01 NO-INPUT-DATA      PIC X(15)   VALUE "NO INPUT DATA".       
+                                                                      
+       01 PACKED-DECIMAL-CONSTANTS    PACKED-DECIMAL.                 
+          05 BRACKET-MAX          PIC 99V9     VALUE 7.5.             
+          05 DAYT PIC 9(06)V99 VALUE 0 OCCURS 6 TIMES.                
+          05 WEEK-TOTAL-W  PIC 9(06)V99 VALUE 0.                      
+          05 GTOTAL-W      PIC 9(06)V99 VALUE 0.                      
+                                                                      
+       01 WORK-AREAS.                                                 
+          05 SUB PIC S99 VALUE +01.                                   
+                                                                      
+       01 REPORT-TITLE.                                               
+          05          PIC X(35) VALUE SPACES.                         
+          05          PIC X(22) VALUE "EFFECTIVE HOURS REPORT".       
+                                                                      
+       01 OUT-REPORT-REC-WS.                                          
+           05 FILLER                  PIC X(5) VALUE SPACES.          
+           05 SS-NUM-OUT              PIC XXXBXXBXXXX.                
+           05 FILLER                  PIC X(5) VALUE SPACES.          
+           05 DAY-HOURS-OUT           PIC Z9.9BBBBBBB OCCURS 6 TIMES. 
+           05 FILLER                  PIC X(1) VALUE SPACES.          
+           05 WEEK-TOTAL-OUT          PIC Z9.9.                       
+                                                                      
+       01 TOTAL-LINE.                                                 
+          05 VALUE SPACES                   PIC X(11).                
+          05 VALUE "TOTAL"                  PIC X(05).                
+          05 VALUE SPACES                   PIC X(05).                
+          05 DAY-HOURS-TOTAL-OUT      PIC Z9.9BBBBBBB OCCURS 6 TIMES. 
+      *   05 VALUE SPACES                   PIC X(01).                
+          05 GTOTAL-OUT                     PIC Z99.9.                
+                                                                      
+                                                                      
+       01 SPACESX                           PIC X(1) VALUE SPACES.    
+                                                                      
+       01 HEADING-ONE.                                                
+          05 VALUE SPACES                   PIC X(08).                
+          05 VALUE "SOCIAL"                 PIC X(06).                
+          05 VALUE SPACES                   PIC X(22).                
+          05 VALUE "E F F E C T I V E  H O U R S"   PIC X(28).        
+          05 VALUE SPACES                   PIC X(23).                
+          05 VALUE "TOTAL"                  PIC X(05).                
+                                                                      
+       01 HEADING-TWO.                                                
+          05 VALUE SPACES                   PIC X(07).                
+          05 VALUE "SECURITY"               PIC X(08).                
+          05 VALUE SPACES                   PIC X(05).                
+          05 VALUE "MONDAY"                 PIC X(06).                
+          05 VALUE SPACES                   PIC X(05).                
+          05 VALUE "TUESDAY"                PIC X(07).                
+          05 VALUE SPACES                   PIC X(03).                
+          05 VALUE "WEDNESDAY"              PIC X(09).                
+          05 VALUE SPACES                   PIC X(02).                
+          05 VALUE "THURSDAY"               PIC X(08).                
+          05 VALUE SPACES                   PIC X(04).                
+          05 VALUE "FRIDAY"                 PIC X(06).                
+          05 VALUE SPACES                   PIC X(04).                
+          05 VALUE "SATURDAY"               PIC X(08).                
+          05 VALUE SPACES                   PIC X(06).                
+          05 VALUE "FOR"                    PIC X(03).                
+                                                                      
+       01 HEADING-THREE.                                              
+          05 VALUE SPACES                   PIC X(08).                
+          05 VALUE "NUMBER"                 PIC X(06).                
+          05 VALUE SPACES                   PIC X(74).                
+          05 VALUE "WEEK"                   PIC X(04).                
+    
+	
+       PROCEDURE DIVISION.                                            
+                                                                      
+      * MAIN LINE                                                     
+                                                                      
+           PERFORM 1000-INIT THRU                                     
+                   1000-INIT EXIT.                                    
+                                                                      
+                                                                      
+           PERFORM PAGE-HEADERS.                                      
+                                                                      
+           PERFORM 3000-MAIN THRU                                     
+                   3000-MAIN-EXIT                                     
+                   UNTIL IS-THERE-MORE-INPUT = "N".                   
+                                                                      
+                                                                      
+           PERFORM 4000-WRAP-UP THRU                                  
+                   4000-WRAP-UP-EXIT.                                 
+                                                                      
+           GOBACK.                                                    
+                                                                      
+       COMMISSION-CALCULATION.                                        
+           IF DAY-HOURS-IN (SUB) IS NOT GREATER THAN BRACKET-MAX      
+              COMPUTE                                                 
+               DAY-HOURS-W (SUB) ROUNDED                              
+               DAY-HOURS-OUT (SUB) ROUNDED       
+                  = DAY-HOURS-IN (SUB)                                
+           ELSE                                                       
+              COMPUTE                                                 
+               DAY-HOURS-W (SUB) ROUNDED                              
+               DAY-HOURS-OUT (SUB) ROUNDED                            
+                  = DAY-HOURS-IN (SUB) +                              
+                    (DAY-HOURS-IN (SUB) - BRACKET-MAX) / 2            
+           END-IF                                                     
+           ADD DAY-HOURS-W (SUB) TO WEEK-TOTAL-W.                     
+                                                                      
+       1000-INIT.                                                     
+           OPEN INPUT  IN-TEST-FILE                                   
+                OUTPUT OUT-REPORT-FILE.                               
+       1000-INIT-EXIT.                                                
+           EXIT.                                                      
+                                                                      
+       2000-READ.                                                     
+           READ IN-TEST-FILE                                          
+             AT END                                                   
+                 MOVE "N" TO IS-THERE-MORE-INPUT                      
+           END-READ.                                                  
+       2000-READ-EXIT.                                                
+           EXIT.                                                      
+                                                                      
+       PAGE-HEADERS.                                                  
+                      WRITE OUT-REPORT-REC FROM HEADING-ONE           
+                      WRITE OUT-REPORT-REC FROM HEADING-TWO           
+                      WRITE OUT-REPORT-REC FROM HEADING-THREE         
+                      WRITE OUT-REPORT-REC FROM SPACESX.              
+                                                                      
+       3000-MAIN.                                                     
+           PERFORM 2000-READ THRU                                     
+                   2000-READ-EXIT.                                    
+       3000-MAIN-EXIT.                                                
+           PERFORM PRINT-A-DETAIL-LINE.                               
+           EXIT.                                                      
+                                                                      
+                                                                      
+          PRINT-A-DETAIL-LINE.                                        
+                 MOVE SS-NUM-IN TO SS-NUM-OUT                         
+                 MOVE ZERO TO WEEK-TOTAL-W                            
+                 PERFORM VARYING SUB FROM 1 BY 1 UNTIL SUB > 6        
+                  PERFORM COMMISSION-CALCULATION                      
+                  ADD DAY-HOURS-W (SUB) TO DAYT (SUB)                 
+                  MOVE DAYT (SUB) TO DAY-HOURS-TOTAL-OUT (SUB)        
+                  MOVE DAY-HOURS-W (SUB) TO DAY-HOURS-OUT (SUB)       
+                 END-PERFORM                                          
+                 MOVE WEEK-TOTAL-W TO WEEK-TOTAL-OUT                  
+                 ADD WEEK-TOTAL-W TO GTOTAL-W                         
+                 MOVE GTOTAL-W TO GTOTAL-OUT                          
+            WRITE OUT-REPORT-REC FROM OUT-REPORT-REC-WS               
+            MOVE SPACES TO OUT-REPORT-REC-WS.                         
+                                                                      
+       4000-WRAP-UP.                                                  
+           WRITE OUT-REPORT-REC FROM SPACESX                          
+           WRITE OUT-REPORT-REC FROM TOTAL-LINE                       
+           CLOSE IN-TEST-FILE                                         
+                 OUT-REPORT-FILE.                                     
+                                                                      
+       4000-WRAP-UP-EXIT.                                             
+           EXIT.                                                      
+/*                                                                    
+//GO.INFILE DD DSN=WYL.NY.XCL.HOURS,DISP=SHR                          
+//GO.PRINTER DD SYSOUT=A                                              
+//                                                                    			
