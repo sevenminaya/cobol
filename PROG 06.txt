@@ -1,0 +1,399 @@
+//XDFNY015 JOB ,'K.VENTURA'
+//COMGO EXEC COB2CG,PARM.COB=(QUOTE)
+//COB.SYSIN DD *
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. MAGNETIC.
+
+      **********************************************************
+
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT ALUMNI-FILE-IN ASSIGN TO INFILE.
+           SELECT SORT-FILE ASSIGN TO SYSWORK.
+           SELECT ALUMNI-MASTER-FILE ASSIGN TO MASTER.
+           SELECT ALUMNI-MASTER-REPORT-OUT ASSIGN TO PRINTER1.
+           SELECT ALUMNI-ERROR-REPORT-OUT ASSIGN TO PRINTER2.
+
+       DATA DIVISION.
+       FILE SECTION.
+       FD  ALUMNI-FILE-IN
+           RECORDING MODE IS F
+           RECORD CONTAINS 80 CHARACTERS.
+
+       01  ALUMNI-RECORD-IN         PIC X(80).
+
+       SD  SORT-FILE.
+
+       01  SORT-RECORD.
+           05  CODE-IN                 PIC X(1).
+               88 VALID-CODE                  VALUE "1".
+           05  SSN-IN.
+               10 3-DIGIT              PIC X(3).
+               10 2-DIGIT              PIC X(2).
+               10 4-DIGIT              PIC X(4).
+           05  STUDENT-NAME-IN         PIC X(10).
+               88 MISSING-NAME                VALUE SPACES.
+           05  ADDRESS-IN              PIC X(30).
+               88 MISSING-ADDRESS             VALUE SPACES.
+           05  CITY-ST-ZIP-IN          PIC X(20).
+               88 MISSING-CITY-ST-ZIP         VALUE SPACES.
+           05  MAJOR-DEPT-IN           PIC X(2).
+               88 MISSING-MAJOR               VALUE SPACES.
+           05  YEAR-GRAD-IN            PIC X(2).
+               88 MISSING-YEAR                VALUE SPACES.
+
+       FD  ALUMNI-MASTER-FILE
+           LABEL RECORDS ARE STANDARD
+           RECORD CONTAINS 80 CHARACTERS
+           BLOCK CONTAINS 100 RECORDS.
+
+       01  MASTER-FILE              PIC X(80).
+
+       FD  ALUMNI-MASTER-REPORT-OUT
+                                                                
+           RECORDING MODE IS F.
+
+       01  MASTER-RECORD-OUT        PIC X(105).
+
+       FD  ALUMNI-ERROR-REPORT-OUT
+           RECORDING MODE IS F.
+
+       01  ERROR-RECORD-OUT         PIC X(132).
+
+       WORKING-STORAGE SECTION.
+       01  MORE-INPUT                    PIC X VALUE "Y".
+           88 THERE-IS-NO-MORE-INPUT     VALUE "N".
+       01  ANY-ERRORS                    PIC X.
+       01  PAGE-NUMBER-W                 PIC 99 VALUE ZERO.
+       01  ERROR-PAGE-NUMBER-W           PIC 99 VALUE ZERO.
+       01  LINE-SPACING                  VALUE 1 PIC 9 COMP SYNC.
+       01  TODAYS-DATE.
+           05  RUN-YEAR                  PIC 99.                 
+           05  RUN-MONTH-AND-DAY         PIC 9(4).
+       01  BLANK-LINE                    PIC X VALUE SPACE.
+       01  LINE-LIMIT                    PIC 99 COMP SYNC VALUE 34.
+       01  LINE-COUNT-ER                 PIC 99 COMP SYNC.
+       01  ERROR-LINE-LIMIT              PIC 99 COMP SYNC VALUE 34.
+       01  ERROR-LINE-COUNTER            PIC 99 COMP SYNC.
+ 
+       01  TITLE-HEAD-1.
+           05               PIC X(44) VALUE SPACES.
+           05               PIC X(18)
+                         VALUE "ALUMNI ASSOCIATION".
+
+       01  DATE-PAGE-LINE.
+           05                      PIC X(5) VALUE "DATE ".
+           05  RUN-MONTH-AND-DAY   PIC 99/99/.
+           05  RUN-YEAR            PIC 99.
+           05                      PIC X(80) VALUE SPACES.
+           05                      PIC X(5) VALUE "PAGE ".
+           05  PAGE-NUMBER-OUT     PIC 99.
+
+       01  TITLE-HEAD-2.
+           05                 PIC X(46) VALUE SPACES.
+           05                 PIC X(13) VALUE "MASTER REPORT".
+
+       01  ERROR-TITLE-HEAD-2.
+           05                 PIC X(47) VALUE SPACES.
+           05                 PIC X(12) VALUE "ERROR REPORT".
+
+       01  HEADER-1.
+           05                 PIC X(6) VALUE SPACES.
+           05                 PIC X(6) VALUE "SOCIAL".
+
+       01  HEADER-2.
+           05                 PIC X(5) VALUE SPACES.
+           05                 PIC X(8) VALUE "SECURITY".
+           05                 PIC X(7) VALUE SPACES.
+           05                 PIC X(7) VALUE "STUDENT".
+           05                 PIC X(17) VALUE SPACES.
+           05                 PIC X(6) VALUE "STREET".
+           05                 PIC X(22) VALUE SPACES.
+           05                 PIC X(10) VALUE "CITY/STATE".
+           05                 PIC X(7) VALUE SPACES.
+           05                 PIC X(5) VALUE "MAJOR".
+           05                 PIC X(1) VALUE SPACES.
+           05                 PIC X(5) VALUE "CLASS".
+
+       01  ERROR-HEADER-2.
+           05                 PIC X(5) VALUE SPACES.
+           05                 PIC X(8) VALUE "SECURITY".
+           05                 PIC X(7) VALUE SPACES.
+           05                 PIC X(7) VALUE "STUDENT".
+           05                 PIC X(17) VALUE SPACES.
+           05                 PIC X(6) VALUE "STREET".
+           05                 PIC X(22) VALUE SPACES.
+           05                 PIC X(10) VALUE "CITY/STATE".
+           05                 PIC X(7) VALUE SPACES.
+           05                 PIC X(5) VALUE "MAJOR".
+           05                 PIC X(1) VALUE SPACES.
+           05                 PIC X(5) VALUE "CLASS".
+           05                 PIC X(7) VALUE SPACES.
+           05                 PIC X(5) VALUE "NOTES".
+
+       01  HEADER-3.
+           05                 PIC X(6) VALUE SPACES.
+           05                 PIC X(6) VALUE "NUMBER".
+           05                 PIC X(9) VALUE SPACES.
+           05                 PIC X(4) VALUE "NAME".
+           05                 PIC X(19) VALUE SPACES.
+           05                 PIC X(7) VALUE "ADDRESS".
+           05                 PIC X(22) VALUE SPACES.
+           05                 PIC X(7) VALUE "ZIPCODE".
+           05                 PIC X(10) VALUE SPACES.     
+           05                 PIC X(4) VALUE "DEP.".
+
+       01  DETAIL-LINE.
+           05  FILLER              PIC X(4) VALUE SPACES.
+           05  SSN-OUT.
+               10 3-DIGIT          PIC X(3).
+               10 FILLER           PIC X(1) VALUE SPACE.
+               10 2-DIGIT          PIC X(2).
+               10 FILLER           PIC X(1) VALUE SPACE.
+               10 4-DIGIT          PIC X(4).
+           05  FILLER              PIC X(4) VALUE SPACES.
+           05  STUDENT-NAME-OUT    PIC X(10).
+           05  FILLER              PIC X(4) VALUE SPACES.
+           05  ADDRESS-OUT         PIC X(30).
+           05  FILLER              PIC X(4) VALUE SPACES.
+           05  CITY-ST-ZIP-OUT     PIC X(20).
+           05  FILLER              PIC X(4) VALUE SPACES.
+           05  MAJOR-DEPT-OUT      PIC X(2).  
+           05  FILLER              PIC X(4) VALUE SPACES.
+           05  YEAR-GRADE-OUT      PIC X(2).
+           05  FILLER              PIC X(5) VALUE SPACES.
+           05  ERR-MSG-OUT         PIC X(25).
+
+       01  INVALID-CODE-LINE.
+           05  FILLER              PIC X(12) VALUE "INVALID CODE".
+           05  FILLER              PIC X(1) VALUE SPACE.
+           05  INV-CODE            PIC X(1).
+
+       01  NO-NAME-LINE.
+           05  FILLER              PIC X(20)
+                              VALUE "STUDENT NAME MISSING".
+
+       01  NO-ADDRESS-LINE.
+           05  FILLER              PIC X(22)
+                              VALUE "STREET ADDRESS MISSING".
+
+                                                                M
+       01  NO-CITY-ST-ZIP-LINE.
+           05  FILLER              PIC X(23)
+                               VALUE "CITY,ST,ZIPCODE MISSING".
+
+       01  NO-MAJOR-LINE.
+           05  FILLER              PIC X(24)
+                               VALUE "MAJOR DEPARTMENT MISSING".
+
+       01  NO-YEAR-LINE.
+           05  FILLER              PIC X(24)
+                               VALUE "GRADUATING CLASS MISSING".
+
+       01  NO-INPUT-DATA.
+           05                      PIC X(40) VALUE SPACES.
+           05                      PIC X(13) VALUE "NO INPUT DATA".
+      **************************************************************
+       PROCEDURE DIVISION.
+       CREATE-MASTER-FILE.
+           SORT SORT-FILE
+                ON ASCENDING KEY SSN-IN
+                   USING ALUMNI-FILE-IN
+                   OUTPUT PROCEDURE PRODUCE-MASTER-FILE
+           STOP RUN.
+
+       PRODUCE-MASTER-FILE.
+           PERFORM INITIALIZATION
+           PERFORM PROCESS-A-RECORD UNTIL THERE-IS-NO-MORE-INPUT
+           PERFORM TERMINATION.
+
+       INITIALIZATION.
+           OPEN OUTPUT ALUMNI-MASTER-REPORT-OUT
+                       ALUMNI-MASTER-FILE
+                       ALUMNI-ERROR-REPORT-OUT
+           ACCEPT TODAYS-DATE FROM DATE
+           MOVE CORRESPONDING TODAYS-DATE TO DATE-PAGE-LINE
+           PERFORM PRINT-REPORT-HEADINGS
+           PERFORM READ-A-RECORD
+           IF THERE-IS-NO-MORE-INPUT
+              WRITE MASTER-RECORD-OUT FROM NO-INPUT-DATA
+           END-IF.
+
+       PROCESS-A-RECORD.
+           MOVE "N" TO ANY-ERRORS
+           PERFORM CHECK-INPUT-FOR-VALIDITY
+           IF ANY-ERRORS = "N"
+              PERFORM WRITE-MASTER-RECORD
+           END-IF
+           PERFORM READ-A-RECORD.
+
+       WRITE-MASTER-RECORD.
+           WRITE MASTER-FILE FROM SORT-RECORD
+           PERFORM WRITE-MASTER-REPORT-LINE.
+
+       CHECK-INPUT-FOR-VALIDITY.
+           IF NOT VALID-CODE
+              PERFORM INVALID-CODE-RTN
+           END-IF
+           IF MISSING-NAME
+              PERFORM MISSING-NAME-RTN
+           END-IF
+           IF MISSING-ADDRESS
+              PERFORM MISSING-ADDRESS-RTN
+           END-IF
+           IF MISSING-CITY-ST-ZIP
+              PERFORM MISSING-CITY-ST-ZIP-RTN
+           END-IF
+           IF MISSING-MAJOR
+              PERFORM MISSING-MAJOR-RTN
+           END-IF
+           IF MISSING-YEAR
+              PERFORM MISSING-YEAR-RTN
+           END-IF.
+                                                             
+
+       INVALID-CODE-RTN.
+           MOVE "Y" TO ANY-ERRORS
+           MOVE CORRESPONDING SSN-IN TO SSN-OUT
+           MOVE STUDENT-NAME-IN TO STUDENT-NAME-OUT
+           MOVE ADDRESS-IN TO ADDRESS-OUT
+           MOVE CITY-ST-ZIP-IN TO CITY-ST-ZIP-OUT
+           MOVE MAJOR-DEPT-IN TO MAJOR-DEPT-OUT
+           MOVE YEAR-GRAD-IN TO YEAR-GRADE-OUT
+           MOVE CODE-IN TO INV-CODE
+           MOVE INVALID-CODE-LINE TO ERR-MSG-OUT
+           PERFORM ERROR-LINE-COUNT-CHECK
+           WRITE ERROR-RECORD-OUT FROM DETAIL-LINE.
+
+       MISSING-NAME-RTN.
+           MOVE "Y" TO ANY-ERRORS
+           MOVE CORRESPONDING SSN-IN TO SSN-OUT
+           MOVE STUDENT-NAME-IN TO STUDENT-NAME-OUT
+           MOVE ADDRESS-IN TO ADDRESS-OUT
+           MOVE CITY-ST-ZIP-IN TO CITY-ST-ZIP-OUT
+           MOVE MAJOR-DEPT-IN TO MAJOR-DEPT-OUT
+           MOVE YEAR-GRAD-IN TO YEAR-GRADE-OUT
+           MOVE NO-NAME-LINE TO ERR-MSG-OUT
+           PERFORM ERROR-LINE-COUNT-CHECK
+           WRITE ERROR-RECORD-OUT FROM DETAIL-LINE.
+
+      MISSING-ADDRESS-RTN.
+           MOVE "Y" TO ANY-ERRORS
+           MOVE CORRESPONDING SSN-IN TO SSN-OUT
+           MOVE STUDENT-NAME-IN TO STUDENT-NAME-OUT
+           MOVE ADDRESS-IN TO ADDRESS-OUT
+           MOVE CITY-ST-ZIP-IN TO CITY-ST-ZIP-OUT
+           MOVE MAJOR-DEPT-IN TO MAJOR-DEPT-OUT
+           MOVE YEAR-GRAD-IN TO YEAR-GRADE-OUT
+           MOVE NO-ADDRESS-LINE TO ERR-MSG-OUT
+           PERFORM ERROR-LINE-COUNT-CHECK
+           WRITE ERROR-RECORD-OUT FROM DETAIL-LINE.
+
+       MISSING-CITY-ST-ZIP-RTN.
+           MOVE "Y" TO ANY-ERRORS
+           MOVE CORRESPONDING SSN-IN TO SSN-OUT
+           MOVE STUDENT-NAME-IN TO STUDENT-NAME-OUT
+           MOVE ADDRESS-IN TO ADDRESS-OUT
+           MOVE CITY-ST-ZIP-IN TO CITY-ST-ZIP-OUT
+           MOVE MAJOR-DEPT-IN TO MAJOR-DEPT-OUT
+           MOVE YEAR-GRAD-IN TO YEAR-GRADE-OUT
+           MOVE NO-CITY-ST-ZIP-LINE TO ERR-MSG-OUT
+           PERFORM ERROR-LINE-COUNT-CHECK
+           WRITE ERROR-RECORD-OUT FROM DETAIL-LINE.
+
+       MISSING-MAJOR-RTN.
+           MOVE "Y" TO ANY-ERRORS
+           MOVE CORRESPONDING SSN-IN TO SSN-OUT
+           MOVE STUDENT-NAME-IN TO STUDENT-NAME-OUT
+           MOVE ADDRESS-IN TO ADDRESS-OUT
+           MOVE CITY-ST-ZIP-IN TO CITY-ST-ZIP-OUT
+           MOVE MAJOR-DEPT-IN TO MAJOR-DEPT-OUT
+           MOVE YEAR-GRAD-IN TO YEAR-GRADE-OUT
+           MOVE NO-MAJOR-LINE TO ERR-MSG-OUT
+           PERFORM ERROR-LINE-COUNT-CHECK
+           WRITE ERROR-RECORD-OUT FROM DETAIL-LINE.
+
+       MISSING-YEAR-RTN.
+           MOVE "Y" TO ANY-ERRORS
+           MOVE CORRESPONDING SSN-IN TO SSN-OUT
+           MOVE STUDENT-NAME-IN TO STUDENT-NAME-OUT
+           MOVE ADDRESS-IN TO ADDRESS-OUT
+           MOVE CITY-ST-ZIP-IN TO CITY-ST-ZIP-OUT
+           MOVE MAJOR-DEPT-IN TO MAJOR-DEPT-OUT
+           MOVE YEAR-GRAD-IN TO YEAR-GRADE-OUT
+           MOVE NO-YEAR-LINE TO ERR-MSG-OUT
+           PERFORM ERROR-LINE-COUNT-CHECK
+           WRITE ERROR-RECORD-OUT FROM DETAIL-LINE.
+
+       ERROR-LINE-COUNT-CHECK.
+           IF 1 + ERROR-LINE-COUNTER > ERROR-LINE-LIMIT
+               PERFORM PRINT-ERROR-REPORT-HEAD
+           END-IF.
+
+       TERMINATION.
+           CLOSE ALUMNI-MASTER-FILE
+                 ALUMNI-MASTER-REPORT-OUT
+                 ALUMNI-ERROR-REPORT-OUT.
+
+       READ-A-RECORD.
+           RETURN SORT-FILE
+              AT END
+                 SET THERE-IS-NO-MORE-INPUT TO TRUE.
+
+       LINE-COUNT-CHECK.
+            IF 1 + LINE-COUNT-ER
+              GREATER THAN LINE-LIMIT
+               PERFORM PRINT-MASTER-HEAD.
+
+       PRINT-REPORT-HEADINGS.
+           PERFORM PRINT-MASTER-HEAD
+           PERFORM PRINT-ERROR-REPORT-HEAD.
+
+       PRINT-MASTER-HEAD.
+           ADD 1 TO PAGE-NUMBER-W
+           MOVE PAGE-NUMBER-W TO PAGE-NUMBER-OUT
+           WRITE MASTER-RECORD-OUT FROM TITLE-HEAD-1 AFTER PAGE
+           WRITE MASTER-RECORD-OUT FROM DATE-PAGE-LINE
+           WRITE MASTER-RECORD-OUT FROM TITLE-HEAD-2
+           WRITE MASTER-RECORD-OUT FROM HEADER-1
+           WRITE MASTER-RECORD-OUT FROM HEADER-2
+           WRITE MASTER-RECORD-OUT FROM HEADER-3
+           WRITE MASTER-RECORD-OUT FROM BLANK-LINE
+           MOVE 2 TO LINE-SPACING.
+
+       PRINT-ERROR-REPORT-HEAD.
+           ADD 1 TO ERROR-PAGE-NUMBER-W
+           MOVE ERROR-PAGE-NUMBER-W TO PAGE-NUMBER-OUT
+           WRITE ERROR-RECORD-OUT FROM TITLE-HEAD-1 AFTER PAGE
+           WRITE ERROR-RECORD-OUT FROM DATE-PAGE-LINE
+           WRITE ERROR-RECORD-OUT FROM ERROR-TITLE-HEAD-2
+           WRITE ERROR-RECORD-OUT FROM HEADER-1
+           WRITE ERROR-RECORD-OUT FROM ERROR-HEADER-2
+           WRITE ERROR-RECORD-OUT FROM HEADER-3
+           WRITE ERROR-RECORD-OUT FROM BLANK-LINE
+           MOVE 2 TO LINE-SPACING.
+
+       WRITE-MASTER-REPORT-LINE.
+           MOVE "N" TO ANY-ERRORS.
+           MOVE CORRESPONDING SSN-IN TO SSN-OUT
+           MOVE STUDENT-NAME-IN TO STUDENT-NAME-OUT
+           MOVE ADDRESS-IN TO ADDRESS-OUT
+           MOVE CITY-ST-ZIP-IN TO CITY-ST-ZIP-OUT
+           MOVE MAJOR-DEPT-IN TO MAJOR-DEPT-OUT
+           MOVE YEAR-GRAD-IN TO YEAR-GRADE-OUT
+           MOVE SPACES TO ERR-MSG-OUT
+           PERFORM LINE-COUNT-CHECK
+           WRITE MASTER-RECORD-OUT FROM DETAIL-LINE
+           ADD 1 TO LINE-COUNT-ER.
+/*
+//GO.INFILE DD DSN=WYL.NY.XDF.ALUMNI,DISP=SHR
+//GO.PRINTER1 DD SYSOUT=A
+//GO.PRINTER2 DD SYSOUT=A
+//GO.MASTER DD DSN=WYL.NY.XDF.MASTER,
+//             DISP=(,CATLG,DELETE),
+//             DCB=(LRECL=80,BLKSIZE=3600,RECFM=FB),
+//             UNIT=DISK,SPACE=(3600,(1,1),RLSE),
+//             VOL=SER=CNY003
+//
+                        
